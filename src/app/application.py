@@ -26,6 +26,7 @@ class Application:
         self.text_renderer.on_output_added = self.play_return_sound
         self._last_return_sound_time = 0.0
         self._return_sound_debounce_sec = 0.15
+        self._last_key_sound = None  # avoid repeating same keypress sound in a row
         self.start_time = time.time()  # Track the start time
 
     def run(self):
@@ -107,7 +108,13 @@ class Application:
         sound_list = self.enter_sounds if key == pygame.K_RETURN else self.standard_sounds
         if not sound_list:
             return
-        sound = random.choice(sound_list)
+        # Prefer a different sound than last time (less likely to repeat in a row)
+        if self._last_key_sound is not None and len(sound_list) > 1:
+            others = [s for s in sound_list if s is not self._last_key_sound]
+            sound = random.choice(others) if others else random.choice(sound_list)
+        else:
+            sound = random.choice(sound_list)
+        self._last_key_sound = sound
         sound.play()
 
     def play_return_sound(self):

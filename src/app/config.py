@@ -8,8 +8,8 @@ class Config:
         self.shell_cwd = None  # None = use current working directory when app runs
         self.shell_use_pty = True  # Use PTY so SSH and other TTY programs work; fallback to pipes if unavailable
         self.font_path = file_loader.get_path("assets/fonts/Perfect DOS VGA 437 Win.ttf")
-        self.screen_width = 800
-        self.screen_height = 600
+        self.screen_width = 1200   # 50% larger than 800
+        self.screen_height = 900   # 50% larger than 600
         self.font_size = 20
         self.initial_scene = "termlink_boot_scene"
         self.scene_after_boot = "shell_scene"

@@ -43,6 +43,8 @@ class TextRenderer:
         self.cursor_enabled = True
         self._last_logical_line_wrapped_count = 0
         self.on_output_added = None  # optional callback when output is appended (e.g. play return sound)
+        self.on_char_typed = None   # optional callback when typewriter adds char(s), e.g. play keypress sound
+        self.centered_line_indices = set()  # line indices to center horizontally (e.g. {0} for welcome line)
 
     def set_text(self, text_lines):
         """
@@ -71,9 +73,11 @@ class TextRenderer:
         Renders the text buffer, user input, and scroll indicators on the screen.
         """
         visible_lines = self._get_visible_lines()
+        max_visible_lines = self._get_max_visible_lines()
         y = self.margin[1]
         for i, line in enumerate(visible_lines):
-            self._render_line(line, y)
+            line_index = self.scroll_position + i
+            self._render_line(line, y, line_index=line_index)
             y += self.line_height
         self._render_user_input(y)
         self._render_scroll_indicators()
@@ -89,11 +93,11 @@ class TextRenderer:
         """
         Appends new text to the existing text and starts rendering (typewriter).
         on_output_added is triggered when each line *finishes* animating, not here.
+        Does not call update() here to avoid recursion when on_output_added appends more text.
         """
         self.previous_text_lines = self.full_text_lines.copy()
         self.full_text_lines.extend(self._wrap_text([text]))
         self.is_active_rendering = True
-        self.update()
 
     def append_lines_instant(self, lines):
         """
@@ -253,21 +257,17 @@ class TextRenderer:
     def _is_time_to_update(self):
         """
         Determines if it's time to update the rendering based on the delay.
-
-        Returns:
-            bool: True if it's time to update, False otherwise.
+        Does not update last_update_time; _update_text_buffer() does that so
+        multiple chars can be added per frame when behind schedule.
         """
         if self.finish_rendering_requested:
             return True
-        current_time = time.time()
-        if current_time - self.last_update_time >= self.char_delay:
-            self.last_update_time = current_time
-            return True
-        return False
+        return (time.time() - self.last_update_time) >= self.char_delay
 
     def _update_text_buffer(self):
         """
-        Updates the text buffer by adding one character at a time.
+        Updates the text buffer by adding characters. Adds multiple characters per
+        frame when behind schedule (so pacing matches char_delay regardless of frame rate).
         """
         if self.current_line_index < len(self.full_text_lines):
             self.is_active_rendering = True
@@ -276,7 +276,14 @@ class TextRenderer:
                 if self.finish_rendering_requested:
                     self.current_char_index = len(current_line)
                 else:
-                    self.current_char_index += 1
+                    current_time = time.time()
+                    elapsed = current_time - self.last_update_time
+                    remaining = len(current_line) - self.current_char_index
+                    chars_to_add = min(remaining, max(1, int(elapsed / self.char_delay)))
+                    self.current_char_index += chars_to_add
+                    self.last_update_time += chars_to_add * self.char_delay
+                    if chars_to_add > 0 and self.on_char_typed:
+                        self.on_char_typed()
             else:
                 if self.on_output_added:
                     self.on_output_added()
@@ -381,16 +388,23 @@ class TextRenderer:
 
         self._render_cursor(cursor_x, cursor_y)
 
-    def _render_line(self, line, y):
+    def _render_line(self, line, y, line_index=None):
         """
         Renders a single line of text.
 
         Args:
             line: String to be rendered.
             y: Y coordinate for the line.
+            line_index: Optional global line index (for centered_line_indices).
         """
         rendered_text = self.font.render(line, True, self.color)
-        self.screen.blit(rendered_text, (self.margin[0], y))
+        if getattr(self, "centered_line_indices", None) and line_index is not None and line_index in self.centered_line_indices:
+            w = getattr(self.screen, "get_width", None)
+            surface_w = w() if callable(w) else getattr(self.screen, "width", self.max_width)
+            x = (surface_w - rendered_text.get_width()) // 2
+        else:
+            x = self.margin[0]
+        self.screen.blit(rendered_text, (x, y))
 
     def _render_scroll_indicators(self):
         """

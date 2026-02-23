@@ -17,7 +17,10 @@ class FontLoaderFactory:
 class TextRendererFactory:
     @staticmethod
     def create_text_renderer(screen, font):
-        return TextRenderer(screen, font, GREEN)
+        margin = (50, 50)
+        max_width = screen.width - 2 * margin[0]
+        max_height = screen.height - 2 * margin[1]
+        return TextRenderer(screen, font, GREEN, margin=margin, max_width=max_width, max_height=max_height)
 
 class InputHandlerFactory:
     @staticmethod
