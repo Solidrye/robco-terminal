@@ -15,12 +15,17 @@ class TextureManager:
         Returns:
             int: The texture ID.
         """
-        texture_data = pygame.image.tostring(overlay, "RGBA", True)
+        w, h = overlay.get_width(), overlay.get_height()
+        export_surf = pygame.Surface((w, h), pygame.SRCALPHA, 32)
+        export_surf.blit(overlay, (0, 0))
+        texture_data = pygame.image.tostring(export_surf, "RGBA", True)
         texture_id = gl.glGenTextures(1)
         gl.glBindTexture(gl.GL_TEXTURE_2D, texture_id)
-        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, overlay.get_width(), overlay.get_height(), 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, texture_data)
+        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, w, h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, texture_data)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
         return texture_id
 
     @staticmethod

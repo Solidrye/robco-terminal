@@ -6,32 +6,34 @@ import ctypes
 class Renderer:
 
     @staticmethod
-    def render_texture(shader_program, time, width, height):
-        bloom_fbo, bloom_texture = Renderer.create_fbo(width, height)
+    def _apply_crt_settings(shader_program, settings):
+        if settings is None:
+            return
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "LuminanceIntensity"), settings.luminance_intensity)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BloomThreshold"), settings.bloom_threshold)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BloomStrength"), settings.bloom_strength)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BloomOffset"), settings.bloom_offset)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BloomDepth"), settings.bloom_depth)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BlurStrength"), settings.blur_strength)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BlurOffset"), settings.blur_offset)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BlackLevel"), settings.black_level)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "ScanlineFactor"), settings.scanline_factor)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "GrainIntensity"), settings.grain_intensity)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "CurveIntensity"), settings.curve_intensity)
 
-        # First pass: render the scene to the bloom FBO
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, bloom_fbo)
-        gl.glViewport(0, 0, width, height)  # Set viewport to FBO size
+    @staticmethod
+    def render_texture(shader_program, time, width, height, overlay_texture_id, crt_settings=None):
+        # Single pass: bloom samples the same texture (textureSampler) so glow is aligned, no ghosting
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
+        gl.glViewport(0, 0, width, height)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glUseProgram(shader_program)
-        bloom_threshold_location = gl.glGetUniformLocation(shader_program, "BloomThreshold")
-        gl.glUniform1f(bloom_threshold_location, 1)  # Adjust the threshold as needed
+        Renderer._apply_crt_settings(shader_program, crt_settings)
+        gl.glActiveTexture(gl.GL_TEXTURE0)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, overlay_texture_id)
+        gl.glUniform1i(gl.glGetUniformLocation(shader_program, "textureSampler"), 0)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BloomThreshold"), crt_settings.bloom_threshold if crt_settings else 0.1)
         Renderer._render_scene(shader_program, time)
-
-        # Second pass: blur the bloom texture and combine with the original scene
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
-        gl.glViewport(0, 0, width, height)  # Set viewport to screen size
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-        gl.glUseProgram(shader_program)
-        bloom_texture_location = gl.glGetUniformLocation(shader_program, "BloomTexture")
-        gl.glActiveTexture(gl.GL_TEXTURE1)
-        gl.glBindTexture(gl.GL_TEXTURE_2D, bloom_texture)
-        gl.glUniform1i(bloom_texture_location, 1)
-        Renderer._render_scene(shader_program, time)
-
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
-        gl.glDeleteFramebuffers(1, [bloom_fbo])
-        gl.glDeleteTextures([bloom_texture])
 
 
     @staticmethod

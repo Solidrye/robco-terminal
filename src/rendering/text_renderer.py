@@ -41,6 +41,8 @@ class TextRenderer:
         self.scroll_position = 0
         self.user_input_text = ""
         self.cursor_enabled = True
+        self._last_logical_line_wrapped_count = 0
+        self.on_output_added = None  # optional callback when output is appended (e.g. play return sound)
 
     def set_text(self, text_lines):
         """
@@ -50,7 +52,12 @@ class TextRenderer:
             text_lines: List of strings to be rendered.
         """
         self.full_text_lines = self._wrap_text(text_lines)
+        self._last_logical_line_wrapped_count = (
+            len(self._wrap_text([text_lines[-1]])) if text_lines else 0
+        )
         self._reset_state()
+        if text_lines and self.on_output_added:
+            self.on_output_added()
 
     def update(self):
         """
@@ -80,15 +87,46 @@ class TextRenderer:
 
     def append_text(self, text):
         """
-        Appends new text to the existing text and starts rendering.
-
-        Args:
-            text: A string to be appended.
+        Appends new text to the existing text and starts rendering (typewriter).
+        on_output_added is triggered when each line *finishes* animating, not here.
         """
         self.previous_text_lines = self.full_text_lines.copy()
         self.full_text_lines.extend(self._wrap_text([text]))
         self.is_active_rendering = True
         self.update()
+
+    def append_lines_instant(self, lines):
+        """
+        Appends lines to the buffer and updates the display immediately
+        (no typewriter effect). Used for live shell output.
+
+        Args:
+            lines: List of strings to append.
+        """
+        if not lines:
+            return
+        for line in lines:
+            wrapped = self._wrap_text([line])
+            self.full_text_lines.extend(wrapped)
+            self._last_logical_line_wrapped_count = len(wrapped)
+        self._render_full_text()
+        if self.on_output_added:
+            self.on_output_added()
+
+    def replace_last_line(self, text):
+        """
+        Replaces the last logical line with the given text (e.g. for \\r progress updates).
+        No-op if there are no lines.
+        """
+        if not self.full_text_lines or self._last_logical_line_wrapped_count <= 0:
+            return
+        n = self._last_logical_line_wrapped_count
+        wrapped = self._wrap_text([text])
+        self.full_text_lines = self.full_text_lines[:-n] + wrapped
+        self._last_logical_line_wrapped_count = len(wrapped)
+        self._render_full_text()
+        if self.on_output_added:
+            self.on_output_added()
 
     def is_rendering(self):
         """
@@ -128,6 +166,21 @@ class TextRenderer:
         max_scroll = max(0, len(self.text_buffer) - self._get_max_visible_lines())
         if self.scroll_position < max_scroll:
             self.scroll_position += 1
+
+    def scroll_page_up(self):
+        """
+        Scrolls the visible text up by one page (max visible lines).
+        """
+        page_size = self._get_max_visible_lines()
+        self.scroll_position = max(0, self.scroll_position - page_size)
+
+    def scroll_page_down(self):
+        """
+        Scrolls the visible text down by one page (max visible lines).
+        """
+        max_scroll = max(0, len(self.text_buffer) - self._get_max_visible_lines())
+        page_size = self._get_max_visible_lines()
+        self.scroll_position = min(max_scroll, self.scroll_position + page_size)
 
     def set_user_input_text(self, text):
         """
@@ -225,6 +278,8 @@ class TextRenderer:
                 else:
                     self.current_char_index += 1
             else:
+                if self.on_output_added:
+                    self.on_output_added()
                 self._move_to_next_line()
                 if self.finish_rendering_requested:
                     self._update_text_buffer()

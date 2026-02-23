@@ -36,7 +36,7 @@ class BootupScene(BaseScene):
                 self.app.state_transition = True
 
         if self.app.state_transition:
-            self.app.set_scene('login_scene')
+            self.app.set_scene(self.app.config.scene_after_boot)
 
     def render(self):
         self.app.text_renderer.update()

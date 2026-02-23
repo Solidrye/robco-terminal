@@ -32,12 +32,15 @@ class ShaderFactory:
         uniform float LuminanceIntensity;
         uniform float BloomThreshold;
         uniform sampler2D BloomTexture;
-
-
-        // Ray-tracing like defines
-        #define MAX_RAY_STEPS 200
-        #define SURFACE_DIST_THRESHOLD 0.1
-        #define MAX_DISTANCE 100.0
+        uniform float BloomStrength;
+        uniform float BloomOffset;
+        uniform float BloomDepth;
+        uniform float BlurStrength;
+        uniform float BlurOffset;
+        uniform float BlackLevel;
+        uniform float ScanlineFactor;
+        uniform float GrainIntensity;
+        uniform float CurveIntensity;
 
         #define ENABLE_CURVE 1
         #define ENABLE_OVERSCAN 0
@@ -51,13 +54,8 @@ class ShaderFactory:
         #define ENABLE_GRAIN 1
         #define ENABLE_BACKLIGHT 0
 
-        #define CURVE_INTENSITY 0.3
         #define OVERSCAN_PERCENTAGE 0.02
-        #define BLOOM_OFFSET 0.0015
-        #define BLOOM_STRENGTH 0.8
         #define BLUR_MULTIPLIER 1.05
-        #define BLUR_STRENGTH 0.2
-        #define BLUR_OFFSET 0.003
         #define GRAYSCALE_INTENSITY 0
         #define GRAYSCALE_GLEAM 0
         #define GRAYSCALE_LUMINANCE 1
@@ -65,16 +63,9 @@ class ShaderFactory:
         #define TINT_AMBER vec3(1.0, 0.7, 0.0)
         #define TINT_GREEN vec3(0.0, 1.0, 0.0)
         #define TINT_COLOR TINT_GREEN
-        #define GRAIN_INTENSITY 0.02
-
-        #define SCANLINE_FACTOR 0.3
         #define SCALED_SCANLINE_PERIOD Scale
 
         #define clamp01(value) clamp(value, 0.0, 1.0)
-
-        #if ENABLE_BLACKLEVEL
-        #define BLACKLEVEL_FLOOR vec3(0.05, 0.05, 0.05)
-        #endif
 
         #if ENABLE_BACKLIGHT
         vec3 backlight(vec3 color, vec2 uv) {
@@ -88,7 +79,7 @@ class ShaderFactory:
         #if ENABLE_CURVE
         vec2 transformCurve(vec2 uv) {
             uv -= 0.5;
-            float r = (uv.x * uv.x + uv.y * uv.y) * CURVE_INTENSITY;
+            float r = (uv.x * uv.x + uv.y * uv.y) * CurveIntensity;
             uv *= 4.2 + r;
             uv *= 0.25;
             uv += 0.5;
@@ -110,21 +101,20 @@ class ShaderFactory:
         }
         #endif
 
+        // Single-pass bloom: sample same texture (textureSampler) so glow is perfectly aligned, no ghosting
+        #define BLOOM_KERNEL_SCALE 0.0015
         #if ENABLE_BLOOM
         vec3 bloom(vec3 color, vec2 uv) {
             vec3 bloom = vec3(0.0);
-            vec2 texelSize = 1.0 / vec2(textureSize(BloomTexture, 0));
-            
+            vec2 texelSize = 1.0 / vec2(textureSize(textureSampler, 0));
             for (int i = -4; i <= 4; i++) {
                 for (int j = -4; j <= 4; j++) {
-                    vec2 offset = vec2(float(i), float(j)) * texelSize * BLOOM_OFFSET;
-                    bloom += texture(BloomTexture, uv + offset).rgb;
+                    vec2 offset = vec2(float(i), float(j)) * texelSize * BLOOM_KERNEL_SCALE;
+                    bloom += texture(textureSampler, uv + offset).rgb;
                 }
             }
-            
             bloom /= 81.0;
-            bloom *= BLOOM_STRENGTH;
-            
+            bloom *= BloomStrength * BloomDepth;
             return clamp01(color + bloom);
         }
         #endif
@@ -134,21 +124,21 @@ class ShaderFactory:
 
         vec3 blurH(vec3 c, vec2 uv) {
             vec3 screen = texture(textureSampler, uv).rgb * 0.102;
-            for (int i = 1; i < 9; i++) screen += texture(textureSampler, uv + vec2(float(i) * BLUR_OFFSET, 0.0)).rgb * blurWeights[i];
-            for (int i = 1; i < 9; i++) screen += texture(textureSampler, uv + vec2(float(-i) * BLUR_OFFSET, 0.0)).rgb * blurWeights[i];
+            for (int i = 1; i < 9; i++) screen += texture(textureSampler, uv + vec2(float(i) * BlurOffset, 0.0)).rgb * blurWeights[i];
+            for (int i = 1; i < 9; i++) screen += texture(textureSampler, uv + vec2(float(-i) * BlurOffset, 0.0)).rgb * blurWeights[i];
             return screen * BLUR_MULTIPLIER;
         }
 
         vec3 blurV(vec3 c, vec2 uv) {
             vec3 screen = texture(textureSampler, uv).rgb * 0.102;
-            for (int i = 1; i < 9; i++) screen += texture(textureSampler, uv + vec2(0.0, float(i) * BLUR_OFFSET)).rgb * blurWeights[i];
-            for (int i = 1; i < 9; i++) screen += texture(textureSampler, uv + vec2(0.0, float(-i) * BLUR_OFFSET)).rgb * blurWeights[i];
+            for (int i = 1; i < 9; i++) screen += texture(textureSampler, uv + vec2(0.0, float(i) * BlurOffset)).rgb * blurWeights[i];
+            for (int i = 1; i < 9; i++) screen += texture(textureSampler, uv + vec2(0.0, float(-i) * BlurOffset)).rgb * blurWeights[i];
             return screen * BLUR_MULTIPLIER;
         }
 
         vec3 blur(vec3 color, vec2 uv) {
             vec3 blur = (blurH(color, uv) + blurV(color, uv)) / 2.0 - color;
-            vec3 blur_mask = blur * BLUR_STRENGTH;
+            vec3 blur_mask = blur * BlurStrength;
             return clamp01(color + blur_mask);
         }
         #endif
@@ -203,9 +193,10 @@ class ShaderFactory:
 
         #if ENABLE_BLACKLEVEL
         vec3 blacklevel(vec3 color) {
-            color.rgb -= BLACKLEVEL_FLOOR;
+            vec3 floor_val = vec3(BlackLevel, BlackLevel, BlackLevel);
+            color.rgb -= floor_val;
             color.rgb = clamp01(color.rgb);
-            color.rgb += BLACKLEVEL_FLOOR;
+            color.rgb += floor_val;
             return clamp01(color);
         }
         #endif
@@ -227,7 +218,7 @@ class ShaderFactory:
 
         #if ENABLE_SCANLINES
         float squareWave(float y) {
-            return 1.0 - mod(floor(y / SCALED_SCANLINE_PERIOD), 2.0) * SCANLINE_FACTOR;
+            return 1.0 - mod(floor(y / SCALED_SCANLINE_PERIOD), 2.0) * ScanlineFactor;
         }
 
         vec3 scanlines(vec3 color, vec2 pos) {
@@ -271,100 +262,72 @@ class ShaderFactory:
             float q = p - 0.5;
             float r2 = q * q;
             float grain = q * (a2 + (a1 * r2 + a0) / (r2 * r2 + b1 * r2 + b0));
-            color.rgb += GRAIN_INTENSITY * grain;
+            color.rgb += GrainIntensity * grain;
             return clamp01(color);
         }
         #endif
 
-        float plane(vec3 p, vec3 n, float h) {
-            return dot(p, n) + h;
-        }
-
-        float map(vec3 p) {
-            vec4 textColor = texture(textureSampler, p.xy);
-            if (textColor.a < 0.5) return 1.0; // Consider alpha threshold
-            return plane(p, vec3(0.0, 1.0, 0.0), 0.0);
-        }
-
-        vec4 rayMarch(vec3 ro, vec3 rd) {
-            float t = 0.0;
-            for (int i = 0; i < MAX_RAY_STEPS; i++) {
-                vec3 pos = ro + t * rd;
-                float d = map(pos);
-                if (d < SURFACE_DIST_THRESHOLD) {
-                    vec4 textColor = texture(textureSampler, pos.xy);
-                    return textColor;
-                }
-                if (t > MAX_DISTANCE) break;
-                t += d;
-            }
-            return vec4(vec3(0.0), 1.0); // Background color (black) with alpha
-        }
-
         void main() {
             vec2 uv = fragTexCoord;
             vec4 pos = gl_FragCoord;
+            vec2 uv_sample = uv;
 
             #if ENABLE_CURVE
-            uv = transformCurve(uv);
+            vec2 uv_curved = transformCurve(uv);
+            uv_sample = uv_curved;
 
-            if (uv.x < -0.025 || uv.y < -0.025) {
+            if (uv_curved.x < -0.025 || uv_curved.y < -0.025) {
                 fragColor = vec4(0.0, 0.0, 0.0, 1.0);
                 return;
             }
-            if (uv.x > 1.025 || uv.y > 1.025) {
+            if (uv_curved.x > 1.025 || uv_curved.y > 1.025) {
                 fragColor = vec4(0.0, 0.0, 0.0, 1.0);
                 return;
             }
-            if (uv.x < -0.015 || uv.y < -0.015) {
+            if (uv_curved.x < -0.015 || uv_curved.y < -0.015) {
                 fragColor = vec4(0.03, 0.03, 0.03, 1.0);
                 return;
             }
-            if (uv.x > 1.015 || uv.y > 1.015) {
+            if (uv_curved.x > 1.015 || uv_curved.y > 1.015) {
                 fragColor = vec4(0.03, 0.03, 0.03, 1.0);
                 return;
             }
-            if (uv.x < -0.001 || uv.y < -0.001) {
+            if (uv_curved.x < -0.001 || uv_curved.y < -0.001) {
                 fragColor = vec4(0.0, 0.0, 0.0, 1.0);
                 return;
             }
-            if (uv.x > 1.001 || uv.y > 1.001) {
+            if (uv_curved.x > 1.001 || uv_curved.y > 1.001) {
                 fragColor = vec4(0.0, 0.0, 0.0, 1.0);
                 return;
             }
             #endif
 
-            vec4 color = texture(textureSampler, uv);
-            
-            // Apply bloom threshold
+            vec4 color = texture(textureSampler, uv_sample);
+            // Transparent overlay pixels -> opaque black so text shows on solid background
+            if (color.a < 0.5) {
+                color = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+
+            // Apply bloom threshold (reference: mix bright pixels with bloom; high threshold in pass 1 disables this)
             float luminance = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
             if (luminance > BloomThreshold) {
-                vec3 bloomColor = bloom(color.rgb, uv);
-                color.rgb = mix(color.rgb, bloomColor, BLOOM_STRENGTH);
+                vec3 bloomColor = bloom(color.rgb, uv_sample);
+                color.rgb = mix(color.rgb, bloomColor, BloomStrength);
             }
 
-            if (color.a < 0.5) {
-                vec3 ray_origin = vec3(uv, -3.0);
-                vec3 ray_dir = normalize(vec3(0.0, 0.0, 1.0));
-                vec4 rayMarchedColor = rayMarch(ray_origin, ray_dir);
-                
-                // Blend the ray-marched color with the underlying texture
-                float blendFactor = 0.5; // Adjust this value to control the blending strength
-                color = mix(color, rayMarchedColor, blendFactor);
-            }
-
-            vec2 screenuv = uv;
+            vec2 screenuv = uv_sample;
 
             #if ENABLE_OVERSCAN
-            color = overscan(color, screenuv, uv);
+            vec2 uv_overscan;
+            color = overscan(color, screenuv, uv_overscan);
             #endif
 
             #if ENABLE_BLOOM
-            color.rgb = bloom(color.rgb, uv);
+            color.rgb = bloom(color.rgb, uv_sample);
             #endif
 
             #if ENABLE_BLUR
-            color.rgb = blur(color.rgb, uv);
+            color.rgb = blur(color.rgb, uv_sample);
             #endif
 
             #if ENABLE_GRAYSCALE
@@ -376,7 +339,7 @@ class ShaderFactory:
             #endif
 
             #if ENABLE_REFRESHLINE
-            color.rgb = refreshLines(color.rgb, screenuv);
+            color.rgb = refreshLines(color.rgb, uv_sample);
             #endif
 
             #if ENABLE_SCANLINES
@@ -388,7 +351,7 @@ class ShaderFactory:
             #endif
 
             #if ENABLE_GRAIN
-            color.rgb = grain(color.rgb, screenuv);
+            color.rgb = grain(color.rgb, uv_sample);
             #endif
 
             #if ENABLE_BACKLIGHT
@@ -413,6 +376,15 @@ class ShaderFactory:
         gl.glUniform3f(gl.glGetUniformLocation(shader_program, "BacklightColor"), 0.2, 0.2, 0.2)
         gl.glUniform1f(gl.glGetUniformLocation(shader_program, "LuminanceIntensity"), 2.6)
         gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BloomThreshold"), 0.1)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BloomStrength"), 0.8)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BloomOffset"), 0.0015)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BloomDepth"), 1.0)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BlurStrength"), 0.2)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BlurOffset"), 0.003)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "BlackLevel"), 0.05)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "ScanlineFactor"), 0.3)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "GrainIntensity"), 0.02)
+        gl.glUniform1f(gl.glGetUniformLocation(shader_program, "CurveIntensity"), 0.3)
 
         return shader_program
 

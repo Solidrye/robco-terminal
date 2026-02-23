@@ -37,25 +37,26 @@ class TerminalScreen:
         self.opengl_init.initialize()
         self.curvature_shader = ShaderFactory.create_curvature_shader()
 
-    def display(self, current_time):
+    def display(self, current_time, crt_settings=None):
         """
         Displays the screen with CRT effects applied and renders it.
+        Create texture from overlay while it has scene content, then clear for next frame.
         """
+        texture_id = TextureManager.create_texture_id(self.overlay)
+        TextureManager.bind_texture(texture_id, self.curvature_shader)
+        Renderer.render_texture(self.curvature_shader, current_time, self.width, self.height, texture_id, crt_settings)
+        pygame.display.flip()
+        TextureManager.cleanup(texture_id)
         surface = pygame.Surface(
             (self.overlay.get_width(), self.overlay.get_height()), pygame.SRCALPHA
         )
         self.overlay.blit(surface, (0, 0))
-        texture_id = TextureManager.create_texture_id(self.overlay)
-        TextureManager.bind_texture(texture_id, self.curvature_shader)
-        Renderer.render_texture(self.curvature_shader, current_time, self.width, self.height)
-        pygame.display.flip()
-        TextureManager.cleanup(texture_id)
 
     def clear(self):
         """
-        Clears the overlay.
+        Clears the overlay to opaque black so the CRT shader always has a visible background.
         """
-        self.overlay.fill((0, 0, 0, 0))  # Clear overlay
+        self.overlay.fill((0, 0, 0, 255))
 
     def blit(self, source, dest):
         """

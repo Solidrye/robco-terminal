@@ -11,6 +11,7 @@ class SuccessScene(MenuScene):
             "SECURITY CONTROLS",
             "POWER MANAGEMENT",
             "VAULT MAP",
+            "TERMINAL",
             "LOG OUT",
             "QUIT"
         ])
@@ -40,6 +41,8 @@ class SuccessScene(MenuScene):
             self.app.set_scene('power_management')
         elif selected_option == "VAULT MAP":
             self.app.set_scene('vault_scene')
+        elif selected_option == "TERMINAL":
+            self.app.set_scene('shell_scene')
         elif selected_option == "LOG OUT":
             self.app.set_scene('login_scene')
         elif selected_option == "QUIT":

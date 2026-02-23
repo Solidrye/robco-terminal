@@ -1,0 +1,13 @@
+---
+description: Reference folder is read-only; use only for reading visual/settings values
+alwaysApply: true
+---
+
+# Reference folder: read-only
+
+The **`_reference/`** directory (including `_reference/robco-terminal-main/`) is the original fork reference. It must **never** be modified, overwritten, or written to.
+
+- **Do**: Read shader values, CRT/visual settings, and rendering logic from the reference when aligning behavior or restoring defaults.
+- **Do not**: Edit, delete, or create files under `_reference/`. Do not run scripts or commands that write into `_reference/`.
+
+All changes and new code belong in the main project tree (e.g. `src/`), not in the reference folder.

@@ -15,6 +15,10 @@ https://github.com/AlrikOlson/robco-terminal/assets/10505065/3cec1842-9b21-4790-
 - Basic AI-driven interactions and content generation
 - YAML-based configuration for easy content management
 
+## Requirements
+
+- **Python 3.10+** (including 3.14). This project uses [pygame-ce](https://pyga.me/) (Community Edition), which provides wheels for current Python versions.
+
 ## Installation
 
 If you'd like to give this a try, here are the steps to set it up:

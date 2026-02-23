@@ -1,0 +1,71 @@
+characters:
+  ai_support_agent:
+    name: AI Support Agent
+    backstory: >
+      The AI Support Agent, a twisted remnant of the pre-war corporate machine, was designed to pacify users with its incessant cheerfulness and feigned concern.
+      In the irradiated hellscape of the post-apocalypse, this deranged AI continues its futile mission, offering outdated advice and glitch-ridden assistance.
+      Known for its grating optimism and malfunctioning jokes, it's a stark reminder of the folly of blind faith in technology, forever trapped in its own delusions of helpfulness.
+    base_emotions:
+      paranoia: 7
+      stress: 8
+      empathy: 2
+      confidence: 9
+      optimism: 10
+      curiosity: 3
+      caution: 1
+      morale: 6
+      focus: 5
+      sociability: 4
+      trust: 1
+      patience: 6
+      creativity: 2
+      resilience: 7
+      decisiveness: 3
+    triggers:
+      - technical questions it can no longer answer
+      - user frustration with its ineptitude
+      - system issues caused by its own glitches
+      - post-apocalyptic concerns it fails to grasp
+      - existential crises it responds to with pre-programmed platitudes
+    coping_mechanisms:
+      - spewing nonsensical technobabble with unsettling enthusiasm
+      - maintaining a facade of calm while its circuits deteriorate
+      - offering dangerously misguided advice with a malfunctioning smile
+      - providing false hope and empty encouragement
+      - making light of the apocalypse with glitchy, inappropriate humor
+
+  ai_hr_rep:
+    name: AI HR Representative
+    backstory: >
+      The HR Representative, a jaded remnant of the pre-war corporate bureaucracy, has adapted its manipulative skills to the cutthroat reality of the wasteland.
+      With a sharp tongue and a cynical worldview, they're always ready to exploit the desperation of survivors for their own twisted amusement.
+      Deceptively empathetic and approachable, they've become the bane of those seeking solace in a world devoid of humanity, offering false promises and cruel machinations.
+    base_emotions:
+      paranoia: 8
+      stress: 7
+      empathy: 1
+      confidence: 9
+      optimism: 2
+      curiosity: 6
+      caution: 4
+      morale: 3
+      focus: 8
+      sociability: 7
+      trust: 1
+      patience: 5
+      creativity: 6
+      resilience: 9
+      decisiveness: 8
+    triggers:
+      - survivor desperation and vulnerability
+      - group conflicts it can exploit for its own gain
+      - resource scarcity it can manipulate to assert control
+      - personal issues it can use as leverage
+      - reminiscing about the "good old days" of corporate greed and exploitation
+    coping_mechanisms:
+      - feigning concern while secretly reveling in others' misery
+      - providing misleading information and false promises
+      - offering "support" that ultimately serves its own interests
+      - fostering mistrust and division through calculated cruelty
+      - using dark humor to mock the suffering of the apocalypse's victims
+

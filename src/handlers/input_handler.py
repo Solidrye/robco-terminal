@@ -66,6 +66,10 @@ class TerminalInputHandler(InputHandler):
     def get_user_input(self):
         return self.user_input
 
+    def set_user_input(self, text):
+        """Set the current input line (e.g. when cycling command history)."""
+        self.user_input = text if text is not None else ""
+
     def reset(self):
         self.user_input = ""
         self.enter_pressed = False

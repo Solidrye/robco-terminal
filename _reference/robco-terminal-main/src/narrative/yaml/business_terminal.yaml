@@ -1,0 +1,46 @@
+nodes:
+  start:
+    content: |
+      ROBCO INDUSTRIES UNIFIED OPERATING SYSTEM
+      COPYRIGHT 2075-2077 ROBCO INDUSTRIES
+      -----------------------------------------
+    options:
+      - text: "> INITIATE VAULT-TEC REPRESENTATIVE COMMUNICATION"
+        target: representatives
+
+  representatives:
+    content: |
+      VAULT-TEC REPRESENTATIVE TERMINAL
+      ---------------------------------
+    options:
+      - text: "> INITIATE VAULT-TEC AI SUPPORT AGENT COMMUNICATION"
+        target: ai_support
+      - text: "> INITIATE VAULT-TEC AI HR REPRESENTATIVE COMMUNICATION"
+        target: hr_support
+      - text: "> BACK"
+        target: start
+
+  ai_support:
+    content: |
+      VAULT-TEC AI SUPPORT TERMINAL
+      -----------------------------
+      Welcome, Vault Dweller. We've received reports of unusual plant growth in some areas of the vault. Please exercise caution and report any sightings to the research team immediately.
+    options:
+      - text: "> ENGAGE IN DIALOGUE WITH VAULT-TEC AI SUPPORT AGENT"
+        conversational: true
+        target: ai_support_agent
+      - text: "> RETURN TO VAULT-TEC REPRESENTATIVE MENU"
+        target: representatives
+
+  hr_support:
+    content: |
+      VAULT-TEC AI HR TERMINAL
+      ------------------------
+      Greetings, Vault Dweller. Due to recent incidents, we've scheduled additional recreational activities to help maintain morale. If you have any concerns, please don't hesitate to reach out.
+    options:
+      - text: "> ENGAGE IN DIALOGUE WITH VAULT-TEC AI HR REPRESENTATIVE"
+        conversational: true
+        target: ai_hr_rep
+      - text: "> RETURN TO VAULT-TEC REPRESENTATIVE MENU"
+        target: representatives
+
